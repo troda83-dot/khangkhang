@@ -87,7 +87,7 @@
   function defaults() {
     return {
       w: {}, days: {},
-      settings: { goal: 20, accent: 'en-US', rate: 0.9, autoSpeak: false, theme: 'system', dir: 'en', typeMode: false }
+      settings: { goal: 20, accent: 'en-US', rate: 0.9, autoSpeak: false, theme: 'light', dir: 'en', typeMode: false, brightV2: true }
     };
   }
   var P = defaults();
@@ -97,6 +97,7 @@
       P.w = saved.w || {};
       P.days = saved.days || {};
       Object.assign(P.settings, saved.settings || {});
+      if (!(saved.settings && saved.settings.brightV2)) { P.settings.theme = 'light'; }
     }
   } catch (e) { /* bộ nhớ trình duyệt không khả dụng */ }
   var storageOK = true;
@@ -440,7 +441,7 @@
     var list = L.words.map(function (x) { return x.w; });
     setView(
       '<div class="page-head">' +
-      '<button class="back" data-lesson-back>' + I.left + 'Tất cả bài học</button>' +
+      '<button class="back-link" data-lesson-back>' + I.left + 'Tất cả bài học</button>' +
       '<p class="eyebrow">Bài ' + pad2(n) + ' · ' + (L.multi ? 'Từ đa nghĩa' : LEVEL_NAMES[L.level]) + '</p>' +
       '<h1>' + esc(L.words[0].w) + ' – ' + esc(L.words[L.words.length - 1].w) + '</h1>' +
       '<div class="bar" style="max-width:420px;margin-top:6px"><span class="m" style="width:' + (pr.mastered / pr.total * 100) + '%"></span><span class="l" style="width:' + ((pr.learned - pr.mastered) / pr.total * 100) + '%"></span></div>' +

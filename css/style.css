@@ -1,25 +1,25 @@
 /* ============ Tokens ============ */
 :root {
-  --paper: #f4f5ef;
+  --paper: #f7fbfa;
   --surface: #ffffff;
-  --surface-2: #eceee5;
-  --ink: #1c2330;
-  --ink-2: #465063;
-  --muted: #737c8c;
-  --line: #d8dbd0;
-  --accent: #1d6f5c;
+  --surface-2: #edf5f2;
+  --ink: #1f2a37;
+  --ink-2: #4a5666;
+  --muted: #74808f;
+  --line: #e1eae6;
+  --accent: #0e9f76;
   --accent-ink: #ffffff;
-  --accent-soft: #dcebe4;
-  --pencil: #d99a12;
-  --pencil-soft: #fbefd0;
-  --good: #2c7b4d;
+  --accent-soft: #daf5eb;
+  --pencil: #f2b10c;
+  --pencil-soft: #fff4cf;
+  --good: #1d9a50;
   --good-bright: #12c25a;
-  --good-soft: #ddefe2;
-  --bad: #bb3d33;
-  --bad-soft: #f8e1dd;
-  --hard: #b86a12;
-  --mark: #fde9a6;
-  --shadow: 0 1px 2px rgba(28, 35, 48, .06), 0 6px 20px rgba(28, 35, 48, .06);
+  --good-soft: #def8e7;
+  --bad: #e0483f;
+  --bad-soft: #ffe5e2;
+  --hard: #d97b06;
+  --mark: #fff0a3;
+  --shadow: 0 1px 2px rgba(14, 90, 70, .05), 0 6px 20px rgba(14, 90, 70, .07);
   --radius: 14px;
   --f-display: "Literata", "Georgia", "Times New Roman", serif;
   --f-body: "Be Vietnam Pro", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -114,7 +114,7 @@ mark { background: var(--mark); color: inherit; padding: 0 .15em; border-radius:
 .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--ink); flex-shrink: 0; }
 .brand-mark {
   font-family: var(--f-mono); font-size: .78rem; letter-spacing: .06em;
-  background: var(--ink); color: var(--paper); padding: 4px 7px; border-radius: 6px;
+  background: var(--accent); color: var(--accent-ink); padding: 4px 7px; border-radius: 6px;
 }
 .brand-name { font-family: var(--f-display); font-size: 1.12rem; }
 .brand-name b { color: var(--accent); }
@@ -125,7 +125,7 @@ mark { background: var(--mark); color: inherit; padding: 0 .15em; border-radius:
 }
 .tab svg { width: 17px; height: 17px; }
 .tab:hover { background: var(--surface-2); color: var(--ink); }
-.tab[aria-current="page"] { background: var(--ink); color: var(--paper); }
+.tab[aria-current="page"] { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
 .tab .count { font-family: var(--f-mono); font-size: .72rem; background: var(--bad); color: #fff; border-radius: 99px; padding: 0 6px; }
 .icon-btn {
   display: inline-grid; place-items: center; width: 38px; height: 38px; border-radius: 10px;
@@ -137,7 +137,7 @@ mark { background: var(--mark); color: inherit; padding: 0 .15em; border-radius:
 .icon-btn.sm svg { width: 17px; height: 17px; }
 .icon-btn.on { color: var(--pencil); }
 .icon-btn.on svg { fill: currentColor; }
-#settingsLink[aria-current="page"] { background: var(--ink); color: var(--paper); }
+#settingsLink[aria-current="page"] { background: var(--accent-soft); color: var(--accent); }
 
 .wrap { max-width: 1040px; margin: 0 auto; padding-inline: 16px; padding-block: 24px 48px; outline: none; }
 
@@ -173,7 +173,8 @@ mark { background: var(--mark); color: inherit; padding: 0 .15em; border-radius:
 .btn svg { width: 17px; height: 17px; flex-shrink: 0; }
 .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 .btn.primary:hover { filter: brightness(1.07); }
-.btn.dark { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+.btn.dark { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.btn.dark:hover { background: var(--accent); color: var(--accent-ink); }
 .btn.ghost { background: transparent; border-color: transparent; color: var(--ink-2); }
 .btn.ghost:hover { background: var(--surface-2); color: var(--ink); }
 .btn.danger { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 40%, var(--line)); }
@@ -276,9 +277,10 @@ button.chip.link:hover, a.chip:hover { border-color: var(--accent); color: var(-
 .cta .cta-top svg { width: 22px; height: 22px; color: var(--accent); }
 .cta b { font-size: 1.02rem; }
 .cta .muted { font-size: .86rem; }
-.cta.main { background: var(--ink); border-color: var(--ink); color: var(--paper); }
-.cta.main .muted { color: color-mix(in srgb, var(--paper) 70%, transparent); }
-.cta.main .cta-top svg { color: var(--pencil); }
+.cta.main { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.cta.main:hover { border-color: var(--accent); filter: brightness(1.05); }
+.cta.main .muted { color: color-mix(in srgb, var(--accent-ink) 82%, transparent); }
+.cta.main .cta-top svg { color: var(--accent-ink); }
 
 .lesson-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
 .lesson {
@@ -302,9 +304,9 @@ button.chip.link:hover, a.chip:hover { border-color: var(--accent); color: var(-
 
 /* ============ Lesson page / word rows ============ */
 .page-head { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
-.back { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-2); text-decoration: none; font-size: .9rem; font-weight: 500; background: none; border: 0; padding: 0; cursor: pointer; align-self: flex-start; }
-.back:hover { color: var(--ink); }
-.back svg { width: 16px; height: 16px; }
+.back-link { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-2); text-decoration: none; font-size: .9rem; font-weight: 500; background: none; border: 0; padding: 0; cursor: pointer; align-self: flex-start; }
+.back-link:hover { color: var(--ink); }
+.back-link svg { width: 16px; height: 16px; }
 
 .wlist { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); overflow: hidden; }
 .wrow {

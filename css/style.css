@@ -13,6 +13,7 @@
   --pencil: #d99a12;
   --pencil-soft: #fbefd0;
   --good: #2c7b4d;
+  --good-bright: #12c25a;
   --good-soft: #ddefe2;
   --bad: #bb3d33;
   --bad-soft: #f8e1dd;
@@ -41,6 +42,7 @@
     --pencil: #f0b73c;
     --pencil-soft: #3a2e13;
     --good: #5cc98b;
+    --good-bright: #7df0aa;
     --good-soft: #15321f;
     --bad: #f07b6f;
     --bad-soft: #3c1d19;
@@ -64,6 +66,7 @@
   --pencil: #f0b73c;
   --pencil-soft: #3a2e13;
   --good: #5cc98b;
+  --good-bright: #7df0aa;
   --good-soft: #15321f;
   --bad: #f07b6f;
   --bad-soft: #3c1d19;
@@ -438,7 +441,7 @@ button.chip.link:hover, a.chip:hover { border-color: var(--accent); color: var(-
 .feedback.ok { background: var(--good-soft); }
 .feedback.no { background: var(--bad-soft); }
 .feedback .fb-title { font-weight: 700; display: flex; align-items: center; gap: 8px; }
-.feedback .fb-title svg { width: 18px; height: 18px; flex-shrink: 0; }
+.feedback .fb-title svg { width: 18px; height: 18px; flex-shrink: 0; color: var(--good-bright); }
 .feedback.ok .fb-title { color: var(--good); }
 .feedback.no .fb-title { color: var(--bad); }
 .feedback .fb-word { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }

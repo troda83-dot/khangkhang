@@ -438,6 +438,7 @@ button.chip.link:hover, a.chip:hover { border-color: var(--accent); color: var(-
 .feedback.ok { background: var(--good-soft); }
 .feedback.no { background: var(--bad-soft); }
 .feedback .fb-title { font-weight: 700; display: flex; align-items: center; gap: 8px; }
+.feedback .fb-title svg { width: 18px; height: 18px; flex-shrink: 0; }
 .feedback.ok .fb-title { color: var(--good); }
 .feedback.no .fb-title { color: var(--bad); }
 .feedback .fb-word { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }

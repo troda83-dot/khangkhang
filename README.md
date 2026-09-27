@@ -47,7 +47,8 @@ Dữ liệu nằm trong `js/data/words-*.js`. Mỗi mục có dạng:
 Thư mục [`khangsat/`](khangsat/) là web **làm đề Digital SAT Reading and Writing** (mở `khangsat/index.html`, hoặc `/khangsat/` khi bật GitHub Pages).
 
 - **Đề có sẵn:** *PrimeSAT Verbal 45*, gồm 54 câu. Đáp án và lời giải tiếng Việt do KHANGSAT biên soạn vì đề gốc không kèm đáp án.
-- **Thi thử:** đếm ngược 64 phút, đánh dấu câu để xem lại, gạch bỏ đáp án (ABC), trang kiểm tra trước khi nộp, tự nộp khi hết giờ.
+- **Cấu trúc 2 phần:** đề chia thành Module 1 (câu 1–27) và Module 2 (câu 28–54), mỗi phần 32 phút chạy nối tiếp có màn hình chuyển phần, giống Bluebook.
+- **Thi thử:** đồng hồ đếm ngược từng phần, đánh dấu câu để xem lại, gạch bỏ đáp án (ABC), trang kiểm tra trước khi nộp, tự nộp khi hết giờ.
 - **Luyện tập:** không giới hạn giờ, kiểm tra đáp án và đọc lời giải ngay sau mỗi câu.
 - **Kết quả:** số câu đúng, điểm quy đổi ước tính (200–800), thống kê theo 4 phần thi và 11 dạng câu, phiếu trả lời, xem lời giải từng câu, làm lại các câu sai.
 - Bài làm dở và lịch sử được lưu trong trình duyệt (`localStorage`).

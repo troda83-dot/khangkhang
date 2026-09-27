@@ -1,5 +1,6 @@
 /* KHANGSAT — web làm đề Digital SAT Reading and Writing.
- * Không cần server: đề nằm trong tests/*.js, tiến độ lưu trong localStorage. */
+ * Không cần server: đề nằm trong tests/*.js, tiến độ lưu trong localStorage.
+ * Đề chia thành các phần (module) chạy nối tiếp, giống Bluebook. */
 (function () {
   'use strict';
 
@@ -31,6 +32,7 @@
     clock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
     list: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"/></svg>',
     book: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 19V5"/></svg>',
+    layers: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></svg>',
     bulb: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7V16h8v-1.3A7 7 0 0 0 12 2z"/></svg>',
     flag: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4h11l-2 4 2 4H5"/></svg>',
     up: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"/></svg>',
@@ -109,6 +111,17 @@
     var d = new Date(ts);
     return d.getDate() + '/' + (d.getMonth() + 1) + '/' + d.getFullYear() + ' · ' + d.getHours() + ':' + (d.getMinutes() < 10 ? '0' : '') + d.getMinutes();
   }
+  function rangeOrder(test, from, to) {
+    return test.questions.map(function (q) { return q.n; }).filter(function (n) { return n >= from && n <= to; });
+  }
+  function buildMods(test, subset) {
+    if (subset && subset.length) return [{ name: 'Làm lại câu sai', minutes: test.minutes, order: subset.slice() }];
+    if (test.modules && test.modules.length) {
+      return test.modules.map(function (m) { return { name: m.name, minutes: m.minutes, order: rangeOrder(test, m.from, m.to) }; });
+    }
+    return [{ name: 'Module 1', minutes: test.minutes, order: test.questions.map(function (q) { return q.n; }) }];
+  }
+  function allOrder(s) { var o = []; s.mods.forEach(function (m) { o = o.concat(m.order); }); return o; }
 
   /* ---------- view state ---------- */
   var V = { name: 'home', resultId: null, reviewIdx: 0, filter: 'all', navOpen: false, confirm: false };
@@ -123,18 +136,21 @@
 
   /* ---------- session ---------- */
   function startSession(test, mode, subset) {
+    var mods = buildMods(test, subset);
     store.active = {
-      id: uid(), testId: test.id, mode: mode,
-      order: subset || test.questions.map(function (q) { return q.n; }),
+      id: uid(), testId: test.id, mode: mode, retry: !!(subset && subset.length),
+      mods: mods, modIdx: 0, order: mods[0].order.slice(),
       answers: {}, marked: {}, elim: {}, checked: {},
-      idx: 0, timeLeft: test.minutes * 60, elapsed: 0, startedAt: Date.now(),
-      hideTimer: false, elimMode: false, retry: !!subset
+      idx: 0, timeLeft: mods[0].minutes * 60, elapsed: 0, startedAt: Date.now(),
+      hideTimer: false, elimMode: false
     };
     save();
     go('exam');
   }
   function S() { return store.active; }
+  function curMod() { var s = S(); return s.mods[s.modIdx]; }
   function curQ() { var s = S(); return qByN(testById(s.testId), s.order[s.idx]); }
+  function isLastMod() { var s = S(); return s.modIdx >= s.mods.length - 1; }
 
   function startTick() {
     stopTick();
@@ -143,7 +159,7 @@
       s.elapsed += 1;
       if (s.mode === 'exam') {
         s.timeLeft -= 1;
-        if (s.timeLeft <= 0) { s.timeLeft = 0; save(); toast('Hết giờ! Bài đã được nộp tự động.'); submit(); return; }
+        if (s.timeLeft <= 0) { s.timeLeft = 0; save(); toast('Hết giờ phần này!'); finishModule(); return; }
       }
       if (s.elapsed % 5 === 0) save();
       paintTimer();
@@ -159,15 +175,29 @@
     el.classList.toggle('warn', s.mode === 'exam' && sec <= 300);
   }
 
-  function submit() {
+  function finishModule() {
+    var s = S(); if (!s) return;
+    stopTick();
+    if (!isLastMod()) { s.atBreak = true; save(); go('modbreak'); }
+    else submitAll();
+  }
+  function startNextModule() {
+    var s = S();
+    s.modIdx += 1;
+    var m = s.mods[s.modIdx];
+    s.order = m.order.slice(); s.idx = 0; s.timeLeft = m.minutes * 60; s.atBreak = false;
+    save();
+    go('exam');
+  }
+  function submitAll() {
     var s = S(); if (!s) return;
     stopTick();
     var test = testById(s.testId);
-    var correct = 0;
-    s.order.forEach(function (n) { if (s.answers[n] === qByN(test, n).a) correct++; });
+    var order = allOrder(s), correct = 0;
+    order.forEach(function (n) { if (s.answers[n] === qByN(test, n).a) correct++; });
     var entry = {
-      id: s.id, testId: s.testId, mode: s.mode, date: Date.now(), order: s.order,
-      answers: s.answers, marked: s.marked, elapsed: s.elapsed, correct: correct, total: s.order.length, retry: s.retry
+      id: s.id, testId: s.testId, mode: s.mode, date: Date.now(), order: order,
+      answers: s.answers, marked: s.marked, elapsed: s.elapsed, correct: correct, total: order.length, retry: s.retry
     };
     store.history.unshift(entry);
     store.history = store.history.slice(0, 30);
@@ -178,11 +208,14 @@
   }
 
   /* ---------- render ---------- */
+  var EXAMVIEWS = { exam: 1, check: 1, review: 1, modbreak: 1 };
+  var TICKVIEWS = { exam: 1, check: 1 };
   function render() {
-    if (V.name !== 'exam' && V.name !== 'check') stopTick();
-    document.body.classList.toggle('in-exam', V.name === 'exam' || V.name === 'check' || V.name === 'review');
+    if (!TICKVIEWS[V.name]) stopTick();
+    document.body.classList.toggle('in-exam', !!EXAMVIEWS[V.name]);
     if (V.name === 'exam') { if (!S()) return go('home'); renderExam(); if (!tick) startTick(); paintTimer(); }
     else if (V.name === 'check') { if (!S()) return go('home'); renderCheck(); if (!tick) startTick(); paintTimer(); }
+    else if (V.name === 'modbreak') { if (!S()) return go('home'); renderModBreak(); }
     else if (V.name === 'result') renderResult();
     else if (V.name === 'review') renderReview();
     else renderHome();
@@ -206,15 +239,16 @@
     var h = topbar() + '<main class="home" id="main">';
     h += '<div class="home-head"><span class="eyebrow">Reading and Writing</span>' +
       '<h1>Làm đề SAT như thi thật, chấm điểm và giải thích từng câu</h1>' +
-      '<p>Chọn chế độ thi thử có đồng hồ đếm ngược, hoặc luyện tập để xem đáp án và lời giải tiếng Việt ngay sau mỗi câu.</p></div>';
+      '<p>Đề chia thành 2 phần (module) chạy nối tiếp có đồng hồ riêng, giống Bluebook. Chọn chế độ thi thử, hoặc luyện tập để xem lời giải tiếng Việt ngay sau mỗi câu.</p></div>';
 
     var s = S();
     if (s) {
-      var t = testById(s.testId);
-      var done = s.order.filter(function (n) { return s.answers[n]; }).length;
+      var t = testById(s.testId), m = s.mods[s.modIdx];
+      var done = m.order.filter(function (n) { return s.answers[n]; }).length;
       h += '<section class="card resume" aria-label="Bài đang làm dở"><div class="grow">' +
-        '<span class="eyebrow">Đang làm dở</span><strong>' + esc(t ? t.title : '') + ' · ' + (s.mode === 'exam' ? 'Thi thử' : 'Luyện tập') + '</strong>' +
-        '<span class="small muted">Đã trả lời ' + done + '/' + s.order.length + ' câu' +
+        '<span class="eyebrow">Đang làm dở</span><strong>' + esc(t ? t.title : '') + ' · ' + (s.mode === 'exam' ? 'Thi thử' : 'Luyện tập') +
+        (s.retry ? '' : ' · ' + esc(m.name)) + '</strong>' +
+        '<span class="small muted">Đã trả lời ' + done + '/' + m.order.length + ' câu' +
         (s.mode === 'exam' ? ' · còn <span class="num">' + mmss(s.timeLeft) + '</span>' : '') + '</span></div>' +
         '<div class="row"><button class="btn ghost danger" data-act="discard">Bỏ bài này</button>' +
         '<button class="btn primary" data-act="resume">Làm tiếp</button></div></section>';
@@ -223,16 +257,21 @@
     h += '<div class="home-grid"><div class="stack">';
     TESTS.forEach(function (test) {
       var dc = domainCounts(test), total = test.questions.length;
+      var mods = test.modules || [];
       h += '<article class="card test-card"><div class="booklet">' +
         '<span class="eyebrow">' + esc(test.subtitle) + '</span><h2>' + esc(test.title) + '</h2>' +
-        '<div class="meta"><span>' + I.list + total + ' câu</span><span>' + I.clock + test.minutes + ' phút</span><span>' + I.book + 'Module 1</span></div>' +
+        '<div class="meta"><span>' + I.list + total + ' câu</span><span>' + I.clock + test.minutes + ' phút</span>' +
+        '<span>' + I.layers + (mods.length || 1) + ' phần thi</span></div>' +
+        (mods.length ? '<div class="mod-pills">' + mods.map(function (mm) {
+          return '<span class="mod-pill"><b>' + esc(mm.name) + '</b>' + (mm.to - mm.from + 1) + ' câu · ' + mm.minutes + ' phút</span>';
+        }).join('') + '</div>' : '') +
         '<div class="comp"><div class="comp-bar" aria-hidden="true">' +
         DOMAINS.map(function (d) { return '<i class="d-' + d.id + '" style="width:' + (dc[d.id] / total * 100) + '%"></i>'; }).join('') +
         '</div><div class="comp-legend">' +
         DOMAINS.map(function (d) { return '<span><i class="d-' + d.id + '"></i>' + d.vi + '<b>' + dc[d.id] + '</b></span>'; }).join('') +
         '</div></div></div>' +
         '<div class="modes">' +
-        '<button class="mode main" data-act="start" data-test="' + test.id + '" data-mode="exam"><strong>' + I.clock + 'Thi thử</strong><span>Đếm ngược ' + test.minutes + ' phút, chấm điểm khi nộp bài.</span></button>' +
+        '<button class="mode main" data-act="start" data-test="' + test.id + '" data-mode="exam"><strong>' + I.clock + 'Thi thử</strong><span>Hai phần, mỗi phần tính giờ riêng; chấm điểm khi hoàn thành cả hai.</span></button>' +
         '<button class="mode" data-act="start" data-test="' + test.id + '" data-mode="practice"><strong>' + I.bulb + 'Luyện tập</strong><span>Không giới hạn giờ, kiểm tra đáp án và đọc lời giải từng câu.</span></button>' +
         '</div></article>';
     });
@@ -317,12 +356,10 @@
     return '<div class="verdict no">' + I.no + 'Chưa đúng. Bạn chọn ' + pick + ', đáp án đúng là ' + key + '</div>';
   }
   function explainHTML(q) {
-    var sk = SKILLS[q.skill];
-    return '<div class="explain"><span class="eyebrow">Lời giải · ' + sk.vi + '</span><div>' + q.ex + '</div></div>';
+    return '<div class="explain"><span class="eyebrow">Lời giải · ' + SKILLS[q.skill].vi + '</span><div>' + q.ex + '</div></div>';
   }
 
   function choicesHTML(q, pick, opts) {
-    // opts: { reveal, elim, elimMode, locked }
     return '<ol class="choices" role="list">' + q.c.map(function (text, i) {
       var L = LETTERS[i], cls = 'choice';
       if (opts.reveal) {
@@ -347,16 +384,19 @@
   }
 
   function renderExam() {
-    var s = S(), test = testById(s.testId), q = curQ();
+    var s = S(), test = testById(s.testId), q = curQ(), m = curMod();
     var checked = s.mode === 'practice' && s.checked[q.n];
     var pick = s.answers[q.n];
     var last = s.idx === s.order.length - 1;
     var hasPassage = !!(q.passage || q.notes || q.table || q.chart);
+    var multi = s.mods.length > 1;
 
     var h = '<div class="exam">';
-    h += '<header class="xbar"><div class="xbar-l"><b>Reading and Writing</b><span>' + esc(test.title) + (s.retry ? ' · làm lại câu sai' : '') + '</span></div>' +
+    h += '<header class="xbar"><div class="xbar-l"><b>' + (s.retry ? 'Làm lại câu sai' : esc(m.name)) + '</b><span>' + esc(test.title) + ' · Reading and Writing</span></div>' +
       '<div class="xbar-c"><span class="timer" id="timer" aria-live="off"></span><button class="timer-toggle" data-act="hide-timer">' + (s.hideTimer ? 'Hiện giờ' : 'Ẩn giờ') + '</button></div>' +
-      '<div class="xbar-r"><span class="chip' + (s.mode === 'practice' ? ' practice' : '') + '">' + (s.mode === 'exam' ? 'Thi thử' : 'Luyện tập') + '</span>' +
+      '<div class="xbar-r">' +
+      (multi && !s.retry ? '<span class="chip">Phần ' + (s.modIdx + 1) + '/' + s.mods.length + '</span>' : '') +
+      '<span class="chip' + (s.mode === 'practice' ? ' practice' : '') + '">' + (s.mode === 'exam' ? 'Thi thử' : 'Luyện tập') + '</span>' +
       '<button class="icon-btn" data-act="theme" aria-label="Đổi giao diện sáng/tối">' + (isDark() ? I.sun : I.moon) + '</button>' +
       '<button class="btn sm ghost" data-act="exit">Thoát</button></div></header>';
 
@@ -379,43 +419,69 @@
     h += '</div></section></div>';
 
     var answered = s.order.filter(function (n) { return s.answers[n]; }).length;
-    h += '<footer class="xfoot"><span class="who">Đã trả lời ' + answered + '/' + s.order.length + '</span>' +
+    var lastLabel = isLastMod() ? 'Nộp bài' : 'Kết thúc phần';
+    h += '<footer class="xfoot"><span class="who">Đã trả lời ' + answered + '/' + s.order.length + (multi && !s.retry ? ' câu · ' + esc(m.name) : '') + '</span>' +
       '<button class="qpick" data-act="nav" aria-expanded="' + V.navOpen + '">Câu ' + (s.idx + 1) + ' / ' + s.order.length + I.up + '</button>' +
       '<div class="nav-r"><button class="btn sm nav-lbl" data-act="prev"' + (s.idx === 0 ? ' disabled' : '') + ' aria-label="Câu trước">' + I.left + '<span>Trước</span></button>' +
-      (last ? '<button class="btn sm primary" data-act="to-check">Nộp bài</button>'
+      (last ? '<button class="btn sm primary" data-act="to-check">' + lastLabel + '</button>'
             : '<button class="btn sm primary nav-lbl" data-act="next" aria-label="Câu sau"><span>Tiếp</span>' + I.right + '</button>') +
       '</div>';
     if (V.navOpen) {
-      h += '<div class="navpop" role="dialog" aria-label="Danh sách câu hỏi"><div class="navpop-head"><strong>' + esc(test.title) + '</strong>' +
+      h += '<div class="navpop" role="dialog" aria-label="Danh sách câu hỏi"><div class="navpop-head"><strong>' + esc(m.name) + '</strong>' +
         '<button class="btn sm ghost" data-act="nav">Đóng</button></div>' +
         '<div class="keyline"><span><i class="cur"></i>Câu hiện tại</span><span><i></i>Chưa làm</span><span><i class="a"></i>Đã trả lời</span><span><i class="m"></i>Đánh dấu</span></div>' +
         navGrid(s.order, function (n) { return (s.answers[n] ? 'a' : '') + (s.marked[n] ? ' m' : ''); }, s.idx) +
-        '<button class="btn sm" data-act="to-check">Xem trang tổng kết &amp; nộp bài</button></div>';
+        '<button class="btn sm" data-act="to-check">Xem trang tổng kết ' + (isLastMod() ? '&amp; nộp bài' : '&amp; kết thúc phần') + '</button></div>';
     }
     h += '</footer></div>';
     app.innerHTML = h;
   }
 
   function renderCheck() {
-    var s = S(), test = testById(s.testId);
+    var s = S(), test = testById(s.testId), m = curMod();
     var blank = s.order.filter(function (n) { return !s.answers[n]; });
     var marked = s.order.filter(function (n) { return s.marked[n]; });
+    var lastMod = isLastMod();
     var h = '<div class="exam">';
-    h += '<header class="xbar"><div class="xbar-l"><b>Kiểm tra bài làm</b><span>' + esc(test.title) + '</span></div>' +
+    h += '<header class="xbar"><div class="xbar-l"><b>' + (lastMod ? 'Kiểm tra bài làm' : 'Kiểm tra ' + esc(m.name)) + '</b><span>' + esc(test.title) + '</span></div>' +
       '<div class="xbar-c"><span class="timer" id="timer"></span><button class="timer-toggle" data-act="hide-timer">' + (s.hideTimer ? 'Hiện giờ' : 'Ẩn giờ') + '</button></div>' +
       '<div class="xbar-r"><button class="btn sm ghost" data-act="exit">Thoát</button></div></header>';
     h += '<main class="checkpage"><div class="inner">' +
-      '<div><h2>Trước khi nộp bài</h2><p class="muted" style="margin-top:6px">Bấm vào số câu để quay lại sửa. Khi nộp, bài sẽ được chấm ngay.</p></div>' +
+      '<div><h2>' + (lastMod ? 'Trước khi nộp bài' : 'Trước khi sang phần sau') + '</h2><p class="muted" style="margin-top:6px">Bấm vào số câu để quay lại sửa.' +
+      (lastMod ? ' Khi nộp, bài sẽ được chấm ngay.' : ' Sang phần sau là không quay lại được phần này.') + '</p></div>' +
       '<section class="card"><div class="keyline"><span><i></i>Chưa làm (' + blank.length + ')</span><span><i class="a"></i>Đã trả lời (' + (s.order.length - blank.length) + ')</span><span><i class="m"></i>Đánh dấu (' + marked.length + ')</span></div>' +
       navGrid(s.order, function (n) { return (s.answers[n] ? 'a' : '') + (s.marked[n] ? ' m' : ''); }, -1) + '</section>';
     if (V.confirm) {
-      h += '<div class="confirm" role="alert"><strong>Bạn còn ' + blank.length + ' câu chưa trả lời.</strong><span class="small">Câu bỏ trống được tính là sai. Vẫn nộp bài?</span>' +
-        '<div class="row"><button class="btn primary" data-act="submit-now">Vẫn nộp bài</button><button class="btn ghost" data-act="cancel-confirm">Quay lại làm tiếp</button></div></div>';
+      h += '<div class="confirm" role="alert"><strong>Bạn còn ' + blank.length + ' câu chưa trả lời.</strong><span class="small">Câu bỏ trống được tính là sai. Vẫn tiếp tục?</span>' +
+        '<div class="row"><button class="btn primary" data-act="submit-now">' + (lastMod ? 'Vẫn nộp bài' : 'Vẫn sang phần sau') + '</button><button class="btn ghost" data-act="cancel-confirm">Quay lại làm tiếp</button></div></div>';
     } else {
       h += '<div class="row"><button class="btn" data-act="back-exam">' + I.left + 'Quay lại câu ' + s.order[s.idx] + '</button>' +
-        '<button class="btn primary" data-act="submit">Nộp bài</button></div>';
+        '<button class="btn primary" data-act="submit">' + (lastMod ? 'Nộp bài' : 'Sang phần sau ' + I.right) + '</button></div>';
     }
     h += '</div></main></div>';
+    app.innerHTML = h;
+  }
+
+  function renderModBreak() {
+    var s = S(), test = testById(s.testId);
+    var done = s.mods[s.modIdx], next = s.mods[s.modIdx + 1];
+    var answered = done.order.filter(function (n) { return s.answers[n]; }).length;
+    var h = '<div class="exam">';
+    h += '<header class="xbar"><div class="xbar-l"><b>' + esc(test.title) + '</b><span>Nghỉ chuyển phần</span></div>' +
+      '<div class="xbar-c"></div><div class="xbar-r">' +
+      '<button class="icon-btn" data-act="theme" aria-label="Đổi giao diện sáng/tối">' + (isDark() ? I.sun : I.moon) + '</button>' +
+      '<button class="btn sm ghost" data-act="exit">Thoát</button></div></header>';
+    h += '<main class="checkpage"><div class="inner" style="max-width:520px">' +
+      '<section class="card break-card">' +
+      '<div class="break-badge">' + I.ok + '</div>' +
+      '<h2>Hoàn thành ' + esc(done.name) + '</h2>' +
+      '<p class="muted">Bạn đã trả lời ' + answered + '/' + done.order.length + ' câu ở phần này.' +
+      (s.mode === 'exam' ? ' Câu bỏ trống sẽ được tính là sai và không sửa lại được.' : '') + '</p>' +
+      '<div class="next-box"><span class="eyebrow">Tiếp theo</span><strong>' + esc(next.name) + '</strong>' +
+      '<span class="small muted">' + next.order.length + ' câu · ' + next.minutes + ' phút</span></div>' +
+      '<p class="small muted">Đồng hồ của phần sau bắt đầu chạy khi bạn bấm bắt đầu.</p>' +
+      '<button class="btn primary lg" data-act="start-next">Bắt đầu ' + esc(next.name) + ' ' + I.right + '</button>' +
+      '</section></div></main></div>';
     app.innerHTML = h;
   }
 
@@ -454,7 +520,6 @@
       '<button class="btn" data-act="review-first">Xem lời giải từng câu</button>' +
       '<button class="btn ghost" data-act="home">' + I.home + 'Trang chủ</button></div></div></section>';
 
-    // domain + skill breakdown
     var dstat = {}, sstat = {};
     e.order.forEach(function (n) {
       var q = qByN(test, n), sk = q.skill, d = SKILLS[sk].d, ok = e.answers[n] === q.a;
@@ -474,7 +539,6 @@
         return '<tr' + (st.c / st.t < 0.6 ? ' class="weak"' : '') + '><td>' + SKILLS[k].vi + '<small>' + SKILLS[k].en + '</small></td><td>' + st.c + '/' + st.t + '</td></tr>';
       }).join('') + '</tbody></table><p class="small muted">Dạng tô đỏ: đúng dưới 60%, nên ôn thêm.</p></section></div>';
 
-    // answer sheet
     var list = e.order.filter(function (n) {
       if (V.filter === 'wrong') return wrong.indexOf(n) >= 0 || blank.indexOf(n) >= 0;
       if (V.filter === 'marked') return e.marked && e.marked[n];
@@ -574,7 +638,7 @@
         if (s) { toast('Bạn đang có một bài làm dở. Hãy làm tiếp hoặc bỏ bài đó trước.'); break; }
         startSession(t, b.getAttribute('data-mode')); break;
       }
-      case 'resume': go('exam'); break;
+      case 'resume': go(store.active && store.active.atBreak ? 'modbreak' : 'exam'); break;
       case 'discard':
         if (b.getAttribute('data-sure') === '1') { store.active = null; save(); go('home'); toast('Đã bỏ bài làm dở.'); }
         else { b.setAttribute('data-sure', '1'); b.textContent = 'Bấm lần nữa để bỏ'; }
@@ -606,11 +670,12 @@
       case 'back-exam': go('exam'); break;
       case 'submit': {
         var blanks = s.order.filter(function (n) { return !s.answers[n]; }).length;
-        if (blanks) { V.confirm = true; render(); } else submit();
+        if (blanks) { V.confirm = true; render(); } else finishModule();
         break;
       }
-      case 'submit-now': submit(); break;
+      case 'submit-now': finishModule(); break;
       case 'cancel-confirm': V.confirm = false; render(); break;
+      case 'start-next': startNextModule(); break;
       case 'open-result': go('result', { resultId: b.getAttribute('data-id'), filter: 'all' }); break;
       case 'filter': V.filter = b.getAttribute('data-f'); render(); break;
       case 'review': {

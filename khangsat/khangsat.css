@@ -1,27 +1,27 @@
 /* KHANGSAT — giao diện làm đề SAT. Cùng hệ màu/font với web Từ vựng SAT 500. */
 :root {
-  --paper: #f7fbfa;
+  --paper: #f7fbfd;
   --surface: #ffffff;
-  --surface-2: #edf5f2;
-  --ink: #1f2a37;
-  --ink-2: #4a5666;
-  --muted: #74808f;
-  --line: #e1eae6;
-  --line-2: #cfdad5;
-  --accent: #0e9f76;
+  --surface-2: #eef4f8;
+  --ink: #17222e;
+  --ink-2: #46545f;
+  --muted: #6d7a86;
+  --line: #e9eff4;
+  --line-2: #d6dfe6;
+  --accent: #10ad82;
   --accent-ink: #ffffff;
-  --accent-soft: #daf5eb;
-  --pencil: #d99a00;
-  --pencil-soft: #fff4cf;
-  --good: #1d9a50;
-  --good-soft: #def8e7;
-  --bad: #e0483f;
-  --bad-soft: #ffe5e2;
-  --blank: #9aa5b1;
-  --bar-1: #59636f;
-  --bar-2: #b9c1c9;
-  --bar-3: #1f2a37;
-  --shadow: 0 1px 2px rgba(14, 90, 70, .05), 0 6px 20px rgba(14, 90, 70, .07);
+  --accent-soft: #dcf6ec;
+  --pencil: #cf8f00;
+  --pencil-soft: #fdf3d0;
+  --good: #159a4e;
+  --good-soft: #ddf6e5;
+  --bad: #e0473e;
+  --bad-soft: #ffe6e2;
+  --blank: #99a6b2;
+  --bar-1: #566571;
+  --bar-2: #aeb9c3;
+  --bar-3: #1c2732;
+  --shadow: 0 1px 2px rgba(30, 70, 100, .04), 0 6px 22px rgba(30, 70, 100, .06);
   --radius: 14px;
   --f-display: "Literata", "Georgia", "Times New Roman", serif;
   --f-body: "Be Vietnam Pro", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -123,6 +123,7 @@ kbd {
 .btn.ghost:hover { background: var(--surface-2); color: var(--ink); }
 .btn.danger { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 40%, var(--line)); }
 .btn.sm { min-height: 34px; padding: 6px 12px; font-size: .85rem; border-radius: 9px; }
+.btn.lg { min-height: 50px; padding: 13px 22px; font-size: 1rem; }
 .btn[disabled] { opacity: .45; cursor: not-allowed; }
 .icon-btn {
   display: inline-grid; place-items: center; width: 38px; height: 38px; border-radius: 10px;
@@ -165,6 +166,9 @@ kbd {
 .booklet .meta span { display: inline-flex; align-items: center; gap: 6px; }
 .booklet .meta svg { width: 16px; height: 16px; color: var(--muted); }
 .booklet h2 { font-size: 1.6rem; }
+.mod-pills { display: flex; flex-wrap: wrap; gap: 8px; }
+.mod-pill { display: inline-flex; align-items: baseline; gap: 6px; font-size: .8rem; color: var(--ink-2); background: var(--surface-2); border-radius: 99px; padding: 4px 12px; }
+.mod-pill b { font-weight: 600; color: var(--ink); }
 .comp { display: flex; flex-direction: column; gap: 8px; }
 .comp-bar { display: flex; height: 10px; border-radius: 99px; overflow: hidden; gap: 2px; background: var(--surface); }
 .comp-bar i { display: block; height: 100%; }
@@ -355,6 +359,12 @@ details.data table { margin-top: 8px; }
 .checkpage .inner { max-width: 720px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
 .checkpage .card { padding: 20px; display: flex; flex-direction: column; gap: 14px; }
 .confirm { border: 1px solid color-mix(in srgb, var(--bad) 45%, var(--line)); background: var(--bad-soft); border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+.break-card { align-items: center; text-align: center; gap: 16px; padding: 28px 22px; }
+.break-badge { width: 66px; height: 66px; border-radius: 50%; background: var(--good-soft); color: var(--good); display: grid; place-items: center; }
+.break-badge svg { width: 32px; height: 32px; }
+.next-box { width: 100%; display: flex; flex-direction: column; gap: 2px; padding: 14px 16px; border-radius: 12px; background: var(--surface-2); text-align: center; }
+.next-box .eyebrow { color: var(--accent); }
+.next-box strong { font-size: 1.05rem; }
 
 @media (max-width: 860px) {
   .exam { height: auto; min-height: 100%; grid-template-rows: auto auto auto; }

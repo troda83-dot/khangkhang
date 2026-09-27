@@ -11,6 +11,10 @@
   title: 'PrimeSAT Verbal 45',
   subtitle: 'SAT Real Tests · Reading and Writing',
   minutes: 64,
+  modules: [
+    { name: 'Module 1', minutes: 32, from: 1, to: 27 },
+    { name: 'Module 2', minutes: 32, from: 28, to: 54 }
+  ],
   questions: [
     {
       n: 1, skill: 'wic',

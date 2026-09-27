@@ -42,6 +42,18 @@ Dữ liệu nằm trong `js/data/words-*.js`. Mỗi mục có dạng:
 // [từ, loại từ, nghĩa Việt, định nghĩa Anh–Anh, câu ví dụ (từ trong [ngoặc]), đồng nghĩa, ghi chú (tuỳ chọn)]
 ```
 
+## KHANGSAT — web làm đề SAT
+
+Thư mục [`khangsat/`](khangsat/) là web **làm đề Digital SAT Reading and Writing** (mở `khangsat/index.html`, hoặc `/khangsat/` khi bật GitHub Pages).
+
+- **Đề có sẵn:** *PrimeSAT Verbal 45*, gồm 54 câu. Đáp án và lời giải tiếng Việt do KHANGSAT biên soạn vì đề gốc không kèm đáp án.
+- **Thi thử:** đếm ngược 64 phút, đánh dấu câu để xem lại, gạch bỏ đáp án (ABC), trang kiểm tra trước khi nộp, tự nộp khi hết giờ.
+- **Luyện tập:** không giới hạn giờ, kiểm tra đáp án và đọc lời giải ngay sau mỗi câu.
+- **Kết quả:** số câu đúng, điểm quy đổi ước tính (200–800), thống kê theo 4 phần thi và 11 dạng câu, phiếu trả lời, xem lời giải từng câu, làm lại các câu sai.
+- Bài làm dở và lịch sử được lưu trong trình duyệt (`localStorage`).
+
+Thêm đề mới: tạo file `khangsat/tests/<ten-de>.js` theo mẫu `primesat-verbal-45.js` rồi thêm thẻ `<script>` vào `khangsat/index.html`.
+
 ## Cấu trúc
 
 ```
@@ -49,4 +61,5 @@ index.html          trang chính
 css/style.css       giao diện (sáng/tối, responsive)
 js/app.js           toàn bộ logic: học, ôn tập, kiểm tra, từ điển, lưu tiến độ
 js/data/*.js        dữ liệu 500 từ
+khangsat/           web làm đề SAT (index.html, khangsat.css, app.js, tests/*.js)
 ```

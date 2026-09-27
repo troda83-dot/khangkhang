@@ -200,7 +200,7 @@
       answers: s.answers, marked: s.marked, elapsed: s.elapsed, correct: correct, total: order.length, retry: s.retry
     };
     store.history.unshift(entry);
-    store.history = store.history.slice(0, 30);
+    store.history = store.history.slice(0, 60);
     store.active = null;
     save();
     document.body.classList.remove('in-exam');
@@ -235,6 +235,29 @@
     return c;
   }
 
+  // Tổng hợp các lần đã làm trọn vẹn một đề (không tính "làm lại câu sai"),
+  // để hiển thị trạng thái "đã làm" ngay trên trang chủ.
+  function fullRunsFor(testId, total) {
+    return store.history.filter(function (e) { return e.testId === testId && !e.retry && e.total === total; });
+  }
+  function testProgressHTML(test) {
+    var total = test.questions.length;
+    var runs = fullRunsFor(test.id, total);
+    if (!runs.length) return '<div class="test-status"><span class="status-pill todo">Chưa làm</span></div>';
+    var best = runs[0], last = runs[0], examN = 0, practiceN = 0;
+    runs.forEach(function (r) {
+      if (r.correct > best.correct) best = r;
+      if (r.date > last.date) last = r;
+      if (r.mode === 'exam') examN++; else practiceN++;
+    });
+    var parts = [];
+    if (examN) parts.push(examN + ' lần thi thử');
+    if (practiceN) parts.push(practiceN + ' lần luyện tập');
+    return '<div class="test-status"><span class="status-pill done">' + I.ok + 'Đã làm</span>' +
+      '<span class="status-note">' + esc(parts.join(', ')) + ' · Cao nhất <b class="num">' + best.correct + '/' + total + '</b>' +
+      ' (≈' + scaled(best.correct, total) + ') · Gần nhất ' + dateStr(last.date) + '</span></div>';
+  }
+
   function renderHome() {
     var h = topbar() + '<main class="home" id="main">';
     h += '<div class="home-head"><span class="eyebrow">Reading and Writing</span>' +
@@ -260,6 +283,7 @@
       var mods = test.modules || [];
       h += '<article class="card test-card"><div class="booklet">' +
         '<span class="eyebrow">' + esc(test.subtitle) + '</span><h2>' + esc(test.title) + '</h2>' +
+        testProgressHTML(test) +
         '<div class="meta"><span>' + I.list + total + ' câu</span><span>' + I.clock + test.minutes + ' phút</span>' +
         '<span>' + I.layers + (mods.length || 1) + ' phần thi</span></div>' +
         (mods.length ? '<div class="mod-pills">' + mods.map(function (mm) {

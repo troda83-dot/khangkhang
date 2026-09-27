@@ -169,6 +169,13 @@ kbd {
 .mod-pills { display: flex; flex-wrap: wrap; gap: 8px; }
 .mod-pill { display: inline-flex; align-items: baseline; gap: 6px; font-size: .8rem; color: var(--ink-2); background: var(--surface-2); border-radius: 99px; padding: 4px 12px; }
 .mod-pill b { font-weight: 600; color: var(--ink); }
+.test-status { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.status-pill { display: inline-flex; align-items: center; gap: 5px; font-size: .78rem; font-weight: 700; border-radius: 99px; padding: 3px 10px; flex-shrink: 0; }
+.status-pill svg { width: 12px; height: 12px; }
+.status-pill.done { background: var(--good-soft); color: var(--good); }
+.status-pill.todo { background: var(--surface-2); color: var(--muted); }
+.status-note { font-size: .82rem; color: var(--ink-2); }
+.status-note b { font-weight: 600; color: var(--ink); }
 .comp { display: flex; flex-direction: column; gap: 8px; }
 .comp-bar { display: flex; height: 10px; border-radius: 99px; overflow: hidden; gap: 2px; background: var(--surface); }
 .comp-bar i { display: block; height: 100%; }

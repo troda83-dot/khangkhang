@@ -61,6 +61,43 @@
     try { localStorage.setItem(KEY, JSON.stringify(store)); } catch (e) { /* bỏ qua */ }
   }
 
+  /* ---------- sao lưu / khôi phục thủ công ----------
+   * Khi mở trực tiếp file HTML (file://) thay vì một trang web thật, nhiều
+   * trình duyệt (đặc biệt Chrome) không giữ localStorage ổn định qua các lần
+   * tải lại. Tính năng này cho phép tải một file JSON chứa toàn bộ tiến độ
+   * và nạp lại sau đó, để không bị mất dữ liệu trong tình huống đó. */
+  function downloadBackup() {
+    try {
+      var blob = new Blob([JSON.stringify(store, null, 2)], { type: 'application/json' });
+      var url = URL.createObjectURL(blob);
+      var d = new Date(), pad = function (x) { return (x < 10 ? '0' : '') + x; };
+      var name = 'khangsat-sao-luu-' + d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + '-' + pad(d.getHours()) + pad(d.getMinutes()) + '.json';
+      var a = document.createElement('a');
+      a.href = url; a.download = name;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+      toast('Đã tải file sao lưu: ' + name);
+    } catch (e) { toast('Không tải được file sao lưu.'); }
+  }
+  function restoreBackup(file) {
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function () {
+      try {
+        var data = JSON.parse(String(reader.result));
+        if (!data || typeof data !== 'object' || !Array.isArray(data.history)) throw new Error('bad file');
+        store.history = data.history;
+        store.active = data.active || null;
+        store.theme = data.theme || store.theme;
+        save(); applyTheme();
+        if (V.name !== 'home') go('home'); else render();
+        toast('Đã khôi phục tiến độ từ file sao lưu (' + store.history.length + ' bài).');
+      } catch (e) { toast('File sao lưu không hợp lệ.'); }
+    };
+    reader.onerror = function () { toast('Không đọc được file.'); };
+    reader.readAsText(file);
+  }
+
   /* ---------- theme ---------- */
   var root = document.documentElement;
   var hostTheme = root.getAttribute('data-theme');
@@ -103,6 +140,7 @@
     var m = Math.floor(sec / 60), s = sec % 60;
     return m + ':' + (s < 10 ? '0' : '') + s;
   }
+  var isFileProtocol = window.location.protocol === 'file:';
   function testById(id) { for (var i = 0; i < TESTS.length; i++) if (TESTS[i].id === id) return TESTS[i]; return null; }
   function qByN(test, n) { for (var i = 0; i < test.questions.length; i++) if (test.questions[i].n === n) return test.questions[i]; return null; }
   function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
@@ -312,6 +350,14 @@
       }).join('') + '</ul>';
     }
     h += '</section>';
+
+    h += '<section class="card panel"><h3>Sao lưu tiến độ</h3>' +
+      (isFileProtocol
+        ? '<p class="warn-note">Bạn đang mở <b>file tải về</b> (không phải trang web). Trình duyệt có thể <b>không giữ được kết quả</b> khi bạn tải lại trang hoặc mở lại file. Hãy tải file sao lưu trước khi đóng, và khôi phục lại sau khi mở file.</p>'
+        : '<p class="small muted">Tải một file sao lưu chứa toàn bộ lịch sử và bài đang làm dở, để chuyển sang máy khác hoặc phòng khi trình duyệt xóa dữ liệu.</p>') +
+      '<div class="row"><button class="btn sm" data-act="backup-dl">' + I.book + 'Tải file sao lưu</button>' +
+      '<button class="btn sm ghost" data-act="backup-open">Khôi phục từ file</button></div>' +
+      '<input type="file" id="restoreInput" accept="application/json,.json" hidden></section>';
 
     h += '<section class="card panel"><h3>Phím tắt khi làm bài</h3><ul class="tips">' +
       '<li><span><kbd>A</kbd>–<kbd>D</kbd></span><span>Chọn đáp án (hoặc <kbd>1</kbd>–<kbd>4</kbd>)</span></li>' +
@@ -714,6 +760,15 @@
         var sub = en.order.filter(function (n) { return en.answers[n] !== qByN(tt, n).a; });
         startSession(tt, 'practice', sub); break;
       }
+      case 'backup-dl': downloadBackup(); break;
+      case 'backup-open': { var fi = document.getElementById('restoreInput'); if (fi) fi.click(); break; }
+    }
+  });
+  app.addEventListener('change', function (ev) {
+    if (ev.target && ev.target.id === 'restoreInput') {
+      var file = ev.target.files && ev.target.files[0];
+      restoreBackup(file);
+      ev.target.value = '';
     }
   });
 

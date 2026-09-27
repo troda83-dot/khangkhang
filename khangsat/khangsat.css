@@ -210,6 +210,8 @@ kbd {
 .hist .t { font-weight: 600; font-size: .9rem; }
 .hist .d { font-size: .8rem; color: var(--muted); }
 .empty-note { color: var(--muted); font-size: .88rem; }
+.warn-note { font-size: .84rem; line-height: 1.55; color: var(--pencil); background: var(--pencil-soft); border-radius: 10px; padding: 10px 12px; }
+.warn-note b { font-weight: 700; }
 .tips { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; font-size: .88rem; color: var(--ink-2); }
 .tips li { display: flex; gap: 10px; align-items: baseline; }
 .tips li > span:first-child { flex-shrink: 0; min-width: 64px; display: flex; gap: 3px; }

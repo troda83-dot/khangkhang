@@ -460,3 +460,6 @@ details.data table { margin-top: 8px; }
   box-shadow: var(--shadow); z-index: 50; max-width: calc(100vw - 32px);
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+.fig-img { display: block; width: 100%; max-width: 560px; height: auto; margin: 0 auto; border-radius: 8px; border: 1px solid var(--line); }
+.chart .mk:hover { opacity: .7; }
+.chart .legend svg { width: 34px; height: 12px; max-width: none; margin: 0; flex-shrink: 0; }

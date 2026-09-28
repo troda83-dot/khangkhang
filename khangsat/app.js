@@ -469,33 +469,69 @@
       }).join('') + '</tbody></table></div>' + (t.note ? '<p class="fig-note">' + esc(t.note) + '</p>' : '') + '</figure>';
   }
   function chartHTML(c) {
-    var W = 360, H = 250, L = 46, R = 10, T = 12, B = 34;
+    var line = c.type === 'line';
+    var W = 380, H = line ? 262 : 250, L = 52, R = 12, T = 12, B = line ? 50 : 34;
     var pw = W - L - R, ph = H - T - B;
+    var unit = c.unit !== undefined ? c.unit : '%';
+    var num = function (v) { return Number(v).toLocaleString('en-US'); };
     var y = function (v) { return T + ph - v / c.yMax * ph; };
     var colors = ['var(--bar-1)', 'var(--bar-2)', 'var(--bar-3)'];
     var g = '';
     for (var v = 0; v <= c.yMax; v += c.yStep) {
       g += '<line class="grid" x1="' + L + '" x2="' + (W - R) + '" y1="' + y(v) + '" y2="' + y(v) + '"/>' +
-        '<text x="' + (L - 6) + '" y="' + (y(v) + 4) + '" text-anchor="end">' + v + '</text>';
+        '<text x="' + (L - 6) + '" y="' + (y(v) + 4) + '" text-anchor="end">' + num(v) + '</text>';
     }
-    var gw = pw / c.groups.length, bw = Math.min(34, (gw * 0.7) / c.series.length);
-    c.groups.forEach(function (name, gi) {
-      var x0 = L + gi * gw + (gw - bw * c.series.length) / 2;
+    var gw = pw / c.groups.length;
+    var legend;
+    if (line) {
+      // Giống đề gốc: phân biệt các đường bằng kiểu nét và hình điểm, không chỉ bằng màu.
+      var dash = ['', '7 4', '2 4'];
+      var marker = function (si, x, yy, title) {
+        var t = '<title>' + title + '</title>';
+        if (si === 0) return '<path class="mk" d="M' + x + ' ' + (yy - 5.5) + 'L' + (x + 5.5) + ' ' + (yy + 4) + 'L' + (x - 5.5) + ' ' + (yy + 4) + 'Z" fill="var(--ink)">' + t + '</path>';
+        if (si === 1) return '<rect class="mk" x="' + (x - 4.5) + '" y="' + (yy - 4.5) + '" width="9" height="9" fill="var(--surface)" stroke="var(--ink)" stroke-width="1.6">' + t + '</rect>';
+        return '<circle class="mk" cx="' + x + '" cy="' + yy + '" r="4.8" fill="var(--surface)" stroke="var(--ink)" stroke-width="1.6">' + t + '</circle>';
+      };
+      var X = function (i) { return L + gw * i + gw / 2; };
       c.series.forEach(function (s, si) {
-        var val = s.values[gi];
-        g += '<rect class="bar" x="' + (x0 + si * bw) + '" y="' + y(val) + '" width="' + bw + '" height="' + (y(0) - y(val)) + '" fill="' + colors[si] + '"><title>' + esc(s.name) + ', ' + esc(name) + ': khoảng ' + val + '%</title></rect>';
+        var d = s.values.map(function (val, i) { return (i ? 'L' : 'M') + X(i) + ' ' + y(val); }).join('');
+        g += '<path d="' + d + '" fill="none" stroke="var(--ink)" stroke-width="' + (si === 0 ? 2 : 1.8) + '"' + (dash[si] ? ' stroke-dasharray="' + dash[si] + '"' : '') + ' stroke-linejoin="round"/>';
       });
-      g += '<text x="' + (L + gi * gw + gw / 2) + '" y="' + (H - B + 18) + '" text-anchor="middle">' + esc(name) + '</text>';
-    });
+      c.series.forEach(function (s, si) {
+        s.values.forEach(function (val, i) { g += marker(si, X(i), y(val), esc(s.name) + ', ' + esc(c.groups[i]) + ': khoảng ' + num(val) + unit); });
+      });
+      c.groups.forEach(function (name, i) {
+        g += '<text x="' + X(i) + '" y="' + (H - B + 14) + '" text-anchor="end" transform="rotate(-35 ' + X(i) + ' ' + (H - B + 14) + ')">' + esc(name) + '</text>';
+      });
+      legend = c.series.map(function (s, si) {
+        return '<span><svg width="34" height="12" viewBox="0 0 34 12" aria-hidden="true"><line x1="1" x2="33" y1="6" y2="6" stroke="var(--ink)" stroke-width="1.8"' + (dash[si] ? ' stroke-dasharray="' + dash[si] + '"' : '') + '/>' + marker(si, 17, 6, '') + '</svg>' + esc(s.name) + '</span>';
+      }).join('');
+    } else {
+      var bw = Math.min(34, (gw * 0.7) / c.series.length);
+      c.groups.forEach(function (name, gi) {
+        var x0 = L + gi * gw + (gw - bw * c.series.length) / 2;
+        c.series.forEach(function (s, si) {
+          var val = s.values[gi];
+          var col = c.series.length === 1 ? colors[1] : colors[si];
+          g += '<rect class="bar" x="' + (x0 + si * bw) + '" y="' + y(val) + '" width="' + bw + '" height="' + (y(0) - y(val)) + '" fill="' + col + '"><title>' + esc(s.name) + ', ' + esc(name) + ': khoảng ' + num(val) + unit + '</title></rect>';
+        });
+        g += '<text x="' + (L + gi * gw + gw / 2) + '" y="' + (H - B + 18) + '" text-anchor="middle">' + esc(name) + '</text>';
+      });
+      legend = c.series.map(function (s, i) { return '<span><i style="background:' + (c.series.length === 1 ? colors[1] : colors[i]) + '"></i>' + esc(s.name) + '</span>'; }).join('');
+    }
     g += '<line class="ax" x1="' + L + '" x2="' + (W - R) + '" y1="' + y(0) + '" y2="' + y(0) + '"/>';
     g += '<text x="12" y="' + (T + ph / 2) + '" text-anchor="middle" transform="rotate(-90 12 ' + (T + ph / 2) + ')">' + esc(c.yLabel) + '</text>';
     return '<figure class="fig chart" style="margin:0"><figcaption class="fig-title">' + esc(c.title) + '</figcaption>' +
       '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(c.title) + '">' + g + '</svg>' +
-      '<div class="legend">' + c.series.map(function (s, i) { return '<span><i style="background:' + colors[i] + '"></i>' + esc(s.name) + '</span>'; }).join('') + '</div>' +
+      '<div class="legend">' + legend + '</div>' +
       '<details class="data"><summary>Xem số liệu dạng bảng (ước đọc từ biểu đồ)</summary><div class="fig-scroll"><table><thead><tr><th></th>' +
       c.groups.map(function (x) { return '<th scope="col">' + esc(x) + '</th>'; }).join('') + '</tr></thead><tbody>' +
-      c.series.map(function (s) { return '<tr><th scope="row">' + esc(s.name) + '</th>' + s.values.map(function (v) { return '<td class="n">≈ ' + v + '%</td>'; }).join('') + '</tr>'; }).join('') +
+      c.series.map(function (s) { return '<tr><th scope="row">' + esc(s.name) + '</th>' + s.values.map(function (v) { return '<td class="n">≈ ' + num(v) + unit + '</td>'; }).join('') + '</tr>'; }).join('') +
       '</tbody></table></div></details></figure>';
+  }
+  function imageHTML(im) {
+    return '<figure class="fig" style="margin:0"><img class="fig-img" src="' + im.src + '" alt="' + esc(im.alt || '') + '" loading="lazy">' +
+      (im.caption ? '<figcaption class="fig-note" style="text-align:center">' + esc(im.caption) + '</figcaption>' : '') + '</figure>';
   }
   function passageHTML(q) {
     var h = '';
@@ -507,6 +543,7 @@
     if (q.passage) h += '<div class="passage-text">' + fmt(q.passage) + '</div>';
     if (q.table) h += tableHTML(q.table);
     if (q.chart) h += chartHTML(q.chart);
+    if (q.image) h += imageHTML(q.image);
     return h;
   }
 
@@ -548,7 +585,7 @@
     var checked = s.mode === 'practice' && s.checked[q.n];
     var pick = s.answers[q.n];
     var last = s.idx === s.order.length - 1;
-    var hasPassage = !!(q.passage || q.notes || q.table || q.chart);
+    var hasPassage = !!(q.passage || q.notes || q.table || q.chart || q.image);
     var multi = s.mods.length > 1;
 
     var h = '<div class="exam">';
@@ -732,7 +769,7 @@
     if (!e) return go('home');
     var test = testById(e.testId);
     var n = e.order[V.reviewIdx], q = qByN(test, n), pick = e.answers[n];
-    var hasPassage = !!(q.passage || q.notes || q.table || q.chart);
+    var hasPassage = !!(q.passage || q.notes || q.table || q.chart || q.image);
     var h = '<div class="exam">';
     h += '<header class="xbar"><div class="xbar-l"><b>Xem lời giải</b><span>' + esc(test.title) + '</span></div>' +
       '<div class="xbar-c"><span class="chip review">Đúng ' + e.correct + '/' + e.total + '</span></div>' +

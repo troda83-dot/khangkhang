@@ -57,8 +57,89 @@
       store.theme = raw.theme || 'system';
     }
   } catch (e) { /* bộ nhớ trình duyệt bị chặn: vẫn chạy bình thường */ }
-  function save() {
+  function save(skipCloudPush) {
+    store.updatedAt = Date.now();
     try { localStorage.setItem(KEY, JSON.stringify(store)); } catch (e) { /* bỏ qua */ }
+    if (!skipCloudPush) scheduleCloudPush();
+  }
+
+  /* ---------- đồng bộ nhiều thiết bị qua Supabase ----------
+   * Không có hệ thống tài khoản: mỗi trình duyệt tự có một "mã đồng bộ" 6 ký
+   * tự; nhập cùng mã đó trên các thiết bị khác để chia sẻ chung một hàng dữ
+   * liệu trên Supabase. Đây chỉ là một web học tập, không có dữ liệu nhạy
+   * cảm, nên đổi lấy sự đơn giản (không cần đăng nhập) là hợp lý. */
+  var SUPA_URL = 'https://mrkqlnksotbaavzpngqz.supabase.co';
+  var SUPA_KEY = 'sb_publishable_vEZ-mSsGdLrzyK0hqB82oA_OT3CHr6Y';
+  var SYNC_KEY = 'khangsat.synccode';
+  function randCode() {
+    var chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // bỏ ký tự dễ nhầm: I L O 0 1
+    var s = ''; for (var i = 0; i < 6; i++) s += chars[Math.floor(Math.random() * chars.length)];
+    return s;
+  }
+  function getSyncCode() {
+    try {
+      var c = localStorage.getItem(SYNC_KEY);
+      if (!c) { c = randCode(); localStorage.setItem(SYNC_KEY, c); }
+      return c;
+    } catch (e) { return randCode(); }
+  }
+  var syncCode = getSyncCode();
+  var syncState = { status: 'idle', lastAt: null }; // idle | syncing | ok | error | off
+  var supaClient = null;
+  function supa() {
+    if (!window.supabase || !window.supabase.createClient) return null;
+    if (!supaClient) supaClient = window.supabase.createClient(SUPA_URL, SUPA_KEY);
+    return supaClient;
+  }
+  function paintSyncBadge() {
+    var el = document.getElementById('syncBadge'); if (!el) return;
+    var hh = function (t) { var d = new Date(t); return d.getHours() + ':' + (d.getMinutes() < 10 ? '0' : '') + d.getMinutes(); };
+    var map = {
+      idle: 'Chưa đồng bộ lần nào', syncing: 'Đang đồng bộ…',
+      ok: 'Đã đồng bộ' + (syncState.lastAt ? ' lúc ' + hh(syncState.lastAt) : ''),
+      error: 'Không đồng bộ được (kiểm tra mạng)', off: 'Chưa kết nối được máy chủ đồng bộ'
+    };
+    el.textContent = map[syncState.status] || '';
+    el.className = 'sync-badge ' + syncState.status;
+  }
+  var cloudPushTimer = null;
+  function scheduleCloudPush() {
+    clearTimeout(cloudPushTimer);
+    cloudPushTimer = setTimeout(cloudPush, 1500);
+  }
+  function cloudPush() {
+    var c = supa(); if (!c) { syncState.status = 'off'; paintSyncBadge(); return; }
+    syncState.status = 'syncing'; paintSyncBadge();
+    c.from('khangsat_progress').upsert(
+      { code: syncCode, data: store, updated_at: new Date(store.updatedAt || Date.now()).toISOString() },
+      { onConflict: 'code' }
+    ).then(function (res) {
+      syncState.status = res.error ? 'error' : 'ok';
+      if (!res.error) syncState.lastAt = Date.now();
+      paintSyncBadge();
+    })['catch'](function () { syncState.status = 'error'; paintSyncBadge(); });
+  }
+  function cloudPull(force) {
+    var c = supa(); if (!c) { syncState.status = 'off'; paintSyncBadge(); return; }
+    syncState.status = 'syncing'; paintSyncBadge();
+    return c.from('khangsat_progress').select('data,updated_at').eq('code', syncCode).maybeSingle()
+      .then(function (res) {
+        if (res.error) { syncState.status = 'error'; paintSyncBadge(); return; }
+        if (!res.data) { syncState.status = 'ok'; syncState.lastAt = Date.now(); paintSyncBadge(); return; }
+        var remote = res.data.data || {};
+        var remoteAt = new Date(res.data.updated_at).getTime();
+        var localEmpty = !store.history.length && !store.active;
+        if (force || localEmpty || remoteAt > (store.updatedAt || 0)) {
+          store.history = Array.isArray(remote.history) ? remote.history : store.history;
+          store.active = remote.active || null;
+          store.theme = remote.theme || store.theme;
+          store.updatedAt = remoteAt;
+          save(true); applyTheme();
+          if (V.name !== 'exam' && V.name !== 'check') render();
+          toast('Đã đồng bộ tiến độ từ đám mây (mã ' + syncCode + ').');
+        }
+        syncState.status = 'ok'; syncState.lastAt = Date.now(); paintSyncBadge();
+      })['catch'](function () { syncState.status = 'error'; paintSyncBadge(); });
   }
 
   /* ---------- sao lưu / khôi phục thủ công ----------
@@ -256,7 +337,7 @@
     else if (V.name === 'modbreak') { if (!S()) return go('home'); renderModBreak(); }
     else if (V.name === 'result') renderResult();
     else if (V.name === 'review') renderReview();
-    else renderHome();
+    else { renderHome(); paintSyncBadge(); }
   }
 
   function topbar() {
@@ -351,10 +432,19 @@
     }
     h += '</section>';
 
-    h += '<section class="card panel"><h3>Sao lưu tiến độ</h3>' +
+    h += '<section class="card panel"><h3>Đồng bộ nhiều thiết bị</h3>' +
+      '<p class="small muted">Tiến độ tự lưu trên máy này, và tự đồng bộ qua đám mây theo <b>mã</b> bên dưới. Nhập cùng mã này trên điện thoại/máy tính khác để dùng chung một tiến độ.</p>' +
+      '<div class="sync-row"><span class="sync-code">' + esc(syncCode) + '</span>' +
+      '<button class="btn sm ghost" data-act="sync-copy">Sao chép mã</button>' +
+      '<button class="btn sm ghost" data-act="sync-change">Đổi mã</button></div>' +
+      '<p class="small"><span id="syncBadge" class="sync-badge ' + syncState.status + '"></span></p>' +
+      '<div class="row"><button class="btn sm" data-act="sync-pull">' + I.redo + 'Tải từ đám mây</button>' +
+      '<button class="btn sm ghost" data-act="sync-push">Đẩy lên đám mây</button></div></section>';
+
+    h += '<section class="card panel"><h3>Sao lưu ra file</h3>' +
       (isFileProtocol
         ? '<p class="warn-note">Bạn đang mở <b>file tải về</b> (không phải trang web). Trình duyệt có thể <b>không giữ được kết quả</b> khi bạn tải lại trang hoặc mở lại file. Hãy tải file sao lưu trước khi đóng, và khôi phục lại sau khi mở file.</p>'
-        : '<p class="small muted">Tải một file sao lưu chứa toàn bộ lịch sử và bài đang làm dở, để chuyển sang máy khác hoặc phòng khi trình duyệt xóa dữ liệu.</p>') +
+        : '<p class="small muted">Cách dự phòng thêm: tải một file chứa toàn bộ lịch sử về máy, phòng khi không có mạng để đồng bộ.</p>') +
       '<div class="row"><button class="btn sm" data-act="backup-dl">' + I.book + 'Tải file sao lưu</button>' +
       '<button class="btn sm ghost" data-act="backup-open">Khôi phục từ file</button></div>' +
       '<input type="file" id="restoreInput" accept="application/json,.json" hidden></section>';
@@ -762,6 +852,22 @@
       }
       case 'backup-dl': downloadBackup(); break;
       case 'backup-open': { var fi = document.getElementById('restoreInput'); if (fi) fi.click(); break; }
+      case 'sync-copy':
+        try {
+          navigator.clipboard.writeText(syncCode).then(function () { toast('Đã sao chép mã: ' + syncCode); })['catch'](function () { toast('Mã đồng bộ của bạn: ' + syncCode); });
+        } catch (e) { toast('Mã đồng bộ của bạn: ' + syncCode); }
+        break;
+      case 'sync-change': {
+        var nc = window.prompt('Nhập mã đồng bộ (chữ/số, dùng chung với thiết bị kia):', syncCode);
+        if (nc && nc.trim()) {
+          syncCode = nc.trim().toUpperCase().slice(0, 16);
+          try { localStorage.setItem(SYNC_KEY, syncCode); } catch (e) { /* bỏ qua */ }
+          render(); cloudPull(true);
+        }
+        break;
+      }
+      case 'sync-pull': cloudPull(true); break;
+      case 'sync-push': cloudPush(); break;
     }
   });
   app.addEventListener('change', function (ev) {
@@ -798,8 +904,9 @@
     }
   });
 
-  window.addEventListener('pagehide', save);
-  document.addEventListener('visibilitychange', function () { if (document.hidden) save(); });
+  window.addEventListener('pagehide', function () { save(true); });
+  document.addEventListener('visibilitychange', function () { if (document.hidden) save(true); });
 
   render();
+  cloudPull(); // tự đồng bộ khi mở trang, nếu máy này chưa có dữ liệu hoặc đám mây mới hơn
 })();
